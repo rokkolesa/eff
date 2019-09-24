@@ -1,0 +1,16 @@
+
+(* bug? tukaj mora biti int, da gre podpičje skozi.. sicer mora biti let _ = ... in ...*)
+effect Print2 : string -> unit
+
+let test x =
+    if x > 0 then
+        42
+    else
+        let _ = perform (Print2 (to_string x)) in 0
+
+let simpleHandler = handler
+    | effect (Print2 s) k -> print_endline s ; k ()
+
+let a = test (-1)
+and b = with simpleHandler handle test (-3)
+and c = with simpleHandler handle test (-4)
