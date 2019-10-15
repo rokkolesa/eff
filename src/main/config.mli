@@ -21,7 +21,7 @@ type pervasives =
 val pervasives_file : pervasives ref
 (** Location of the pervasives file *)
 
-type backend = Runtime | Multicore of string
+type backend = Runtime | Multicore of string | Js of string
 
 val backend : backend ref
 

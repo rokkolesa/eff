@@ -1,5 +1,5 @@
 module type Annotation = sig
-  type t
+type t
 
   val print : bool -> t -> int -> Format.formatter -> unit
 end

@@ -134,6 +134,8 @@ let main =
         | Config.Runtime -> Filename.concat Local.effdir "pervasives.eff"
         | Config.Multicore _ ->
             Filename.concat Local.effdir "multicorePervasives.eff"
+        | Config.Js _ ->
+            "TODO pervasives"
       in
       enqueue_file (Load f) ) ;
   try
@@ -142,6 +144,10 @@ let main =
       | Config.Runtime -> (module Runtime.Backend)
       | Config.Multicore output_file ->
           ( module MulticoreCompile.Backend (struct
+            let output_file = output_file
+          end) )
+      | Config.Js output_file ->
+          ( module JsCompile.Backend (struct
             let output_file = output_file
           end) )
     in

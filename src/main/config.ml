@@ -6,7 +6,7 @@ type pervasives = PervasivesNone | PervasivesDefault
 
 let pervasives_file = ref PervasivesDefault
 
-type backend = Runtime | Multicore of string
+type backend = Runtime | Multicore of string | Js of string
 
 let backend = ref Runtime
 
