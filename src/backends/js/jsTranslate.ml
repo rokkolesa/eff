@@ -11,99 +11,111 @@ let abstraction_is_id (p, c) =
   | PVar v -> CoreTypes.Variable.fold (fun desc _ -> desc = "$id_par") v
   | _ -> false
 
-let rec of_abstraction (p, c) = (of_pattern p, of_computation c)
-
-and of_abstraction2 (p1, p2, c) =
-  (of_pattern p1, of_pattern p2, of_computation c)
-
-and field_to_label f = f
-
 (** Conversion functions. *)
-and of_expression {it; at} =
+let rec of_expression {it; at} =
   match it with
   | CoreSyntax.Var v -> Var v
   | CoreSyntax.Const const -> Const const
   | CoreSyntax.Annotated (e, ty) -> of_expression e
   | CoreSyntax.Tuple es -> List (List.map of_expression es)
-  | CoreSyntax.Record assoc -> JsSyntax.Obj (None, Assoc.to_list (Assoc.map of_expression assoc))
-  | CoreSyntax.Variant (lbl, e_opt) -> (
-    match e_opt with
-    | None -> JsSyntax.Obj (Some lbl, [])
-    (* TODO lbl as a field label is not good.. plus.. isn't e actually a list of expressions??*)
-    | Some e -> JsSyntax.Obj (Some lbl, [(lbl, of_expression e)]))
-  | CoreSyntax.Lambda abs -> (
-    (* TODO do we really need to transform to function keyword? it's a lambda.. *)
-    (* Transform back to [function] keyword if possible *)
-    (* match abs with
-    | p, {it= CoreSyntax.Match (e, abs_lst)} -> (
-        let p' = of_pattern p in
-        let e' = of_expression e in
-        match (p', e') with
-        | PVar v1, Var v2
-          when v1 = v2
-               && CoreTypes.Variable.fold (fun desc _ -> desc = "$function") v1
-          ->
-            let converter abs = Return (of_abstraction abs) in
-            Function (List.map converter abs_lst)
-        | _ -> Lambda (of_abstraction abs) ) *)
-    (*| _ ->*) Lambda (of_abstraction abs) )
+  | CoreSyntax.Record assoc -> Record (Assoc.to_list (Assoc.map of_expression assoc))
+  | CoreSyntax.Variant (lbl, e_opt) -> 
+  (
+      match e_opt with
+      | None -> JsSyntax.Variant (lbl, None)
+      | Some e -> JsSyntax.Variant (lbl, Some (of_expression e))
+  )
+  | CoreSyntax.Lambda abs -> Lambda (of_abstraction abs)
   | CoreSyntax.Effect eff -> Effect eff
   | CoreSyntax.Handler {effect_clauses; value_clause; finally_clause} ->
-      (* Non-trivial case *)
-      (* TODO do we really need to transform it to EffectClause and ValueClause? it actually seems to be the easiest choice *)
-      let effect_clauses' =
-        List.map
-          (fun (eff, abs) -> EffectClause (eff, of_abstraction2 abs))
-          (Assoc.to_list effect_clauses)
-      in
-      let value_clause' = ValueClause (of_abstraction value_clause) in
-      let finally_clause_abs = of_abstraction finally_clause in
-      let ghost_bind = CoreTypes.Variable.fresh "$c_thunk" in
-      let match_handler =
-        Match
-          (Apply (Var ghost_bind, List []), value_clause' :: effect_clauses')
-      in
-      if abstraction_is_id finally_clause_abs then
-        Lambda (PVar ghost_bind, match_handler)
-      else
-        Lambda
-          (PVar ghost_bind, Apply (Lambda finally_clause_abs, match_handler))
+      let eff_clauses = List.map (fun (eff, abs2) -> (eff, of_abstraction2 abs2)) @@ Assoc.to_list effect_clauses in
+      Handler {effect_clauses=eff_clauses; value_clause=of_abstraction value_clause; finally_clause=of_abstraction finally_clause}
 
 
 and of_computation {it; at} = 
   match it with
   | CoreSyntax.Value e -> Return (of_expression e)
   | CoreSyntax.Let (p_c_lst, c) ->
-      let folder (p, comp) t = Bind (t, (of_pattern p, of_computation comp)) in
+      let folder abs t = Bind (t, of_abstraction abs) in
       List.fold_right folder p_c_lst (of_computation c)
   | CoreSyntax.LetRec (var_abs_lst, c) ->
-      let ghost_bind = CoreTypes.Variable.fresh "$c_thunk" in
-      let converter (var, abs) = Let (var, Match (Apply(Var ghost_bind, List[]), [ValueClause (of_abstraction abs)])) in
+      (* let converter (var, abs) = let (_, jsterm) = of_abstraction abs in Let (var, jsterm) in
       let sequential_lets = List.map converter var_abs_lst in
-      Sequence (sequential_lets @ [of_computation c])
+      Sequence (sequential_lets @ [of_computation c]) *)
+      (* TODO this, or should we create a sequence.. I think this is the way to go.. *)
+      let folder (var, abs) t = Bind (Let (var, t), of_abstraction abs) in
+      List.fold_right folder var_abs_lst (of_computation c)
   | CoreSyntax.Match (e, abs_lst) ->
-      let converter abs = ValueClause (of_abstraction abs) in
+      let converter ((p, c) as abs) = (shape_of p, of_abstraction abs) in
       Match (of_expression e, List.map converter abs_lst)
   | CoreSyntax.Apply (e1, e2) -> Apply (of_expression e1, of_expression e2)
   | CoreSyntax.Check c -> Comment "Check is not supported"
-  | CoreSyntax.Handle (e, c) ->
-      (* Non-trivial case *)
-      let modified_handler = of_expression e in
-      let thunked_c = Lambda (PNonbinding, of_computation c) in
-      Apply (modified_handler, thunked_c)
-  
+  | CoreSyntax.Handle (e, c) -> Handle(of_expression e, of_computation c)
 
-and of_pattern {it; at} =
+and of_abstraction (p, c) = 
+  let bindings = bindings p in 
+  let _match = CoreTypes.Variable.fresh "match" in
+  let to_js_term (var, pr_list) = Projection (var, pr_list) in
+  let terms = List.map to_js_term bindings in
+  (_match, Sequence (terms @ [of_computation c]))
+
+(* TODO do we really not need the _match variable?? *)
+and of_abstraction2 (p1, p2, c) = 
+  let bindings1 = bindings p1 in 
+  let bindings2 = bindings p2 in 
+  let to_js_term (var, pr_list) = Projection (var, pr_list) in
+  let terms1 = List.map to_js_term bindings1 in
+  let terms2 = List.map to_js_term bindings2 in
+  Sequence (terms1 @ terms2 @ [of_computation c])
+
+  (* 2 of_patterns.. one to create shape and one to create bindings *)
+  (* let shp = shape_of p
+  (shp, of_abstraction c)
+  match (of_Expr e, map (fun (p, c) -> to zgoraj) vse_veje)  *)
+
+and shape_of {it; at} =
   match it with
-  | CoreSyntax.PVar var -> PVar var
-  | CoreSyntax.PAnnotated (p, ty) -> of_pattern p
-  (* TODO with the [as] keyword, the whole value should be passed on.. pattern matching is used only to get into a special case and not to deconstruct the parameter *)
-  | CoreSyntax.PAs (p, var) -> of_pattern p
-  | CoreSyntax.PTuple ps -> PTuple (List.map of_pattern ps)
-  | CoreSyntax.PRecord assoc -> PRecord (Assoc.map of_pattern assoc)
-  | CoreSyntax.PVariant (lbl, p_opt) -> (
-    match p_opt with
-    | None -> PVariant (lbl, None)
-    | Some p -> PVariant (lbl, Some (of_pattern p)) )
-  | CoreSyntax.PConst const -> PConst const
   | CoreSyntax.PNonbinding -> PNonbinding
+  (* constant is not bound to anything.. it's here only for choosing the correct branch *)
+  | CoreSyntax.PConst const -> PConst const
+  | CoreSyntax.PVar var -> PVar var
+  | CoreSyntax.PAnnotated (p, ty) -> shape_of p
+  | CoreSyntax.PAs (p, var) -> shape_of p
+  | CoreSyntax.PTuple ps -> PTuple (List.map shape_of ps)
+  | CoreSyntax.PRecord assoc -> PRecord (Assoc.map shape_of assoc)
+  | CoreSyntax.PVariant (lbl, p_opt) -> 
+    (
+      match p_opt with
+      | None -> PVariant (lbl, None)
+      | Some p -> PVariant (lbl, Some (shape_of p))
+    )
+
+and bindings {it; at} = 
+  match it with
+  | CoreSyntax.PNonbinding -> [] 
+  (* constant is not bound to anything.. it's here only for choosing the correct branch *)
+  | CoreSyntax.PConst const -> []
+  | CoreSyntax.PVar var -> [(var, [])]
+  | CoreSyntax.PAnnotated (p, ty) -> bindings p
+  | CoreSyntax.PAs (p, var) -> (var, []) :: bindings p
+  | CoreSyntax.PTuple ps -> 
+      let rec proj_tuple_patt i p = 
+        let add_proj (var, pr_list) = (var, (Int i) :: pr_list) in
+        List.map add_proj @@ bindings p
+      in
+        List.mapi proj_tuple_patt ps |> List.flatten
+  | CoreSyntax.PRecord assoc -> 
+      let rec proj_record_patt (f, p) = 
+        let add_proj (var, pr_list) = (var, (Field f) :: pr_list) in
+        List.map add_proj @@ bindings p
+      in
+        List.map proj_record_patt @@ Assoc.to_list assoc |> List.flatten
+  | CoreSyntax.PVariant (lbl, p_opt) -> 
+    (
+      match p_opt with
+      | None -> []
+      | Some p -> 
+        (* TODO is this just `bindings p`? *)
+        let add_proj (var, pr_list) = (var, (Field lbl) :: pr_list) in
+        List.map add_proj @@ bindings p
+    )

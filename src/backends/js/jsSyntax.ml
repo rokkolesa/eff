@@ -26,11 +26,13 @@ type projection =
 type js_term =
   | Var of variable
   | Const of Const.t
-  | Projection of js_term * projection list
+  (* | Null *)
+  | Projection of variable * projection list
   (* a LIST of terms - equivalent to list in JS, also handles tuples *)
   | List of js_term list
   (* OBJECT representation - multiple fields, each with it's own name (string) and the actual term.. can also have a name.. also encapsulates VARIANT and RECORD (records have no names) *)
-  | Obj of label option * (field * js_term) list
+  | Record of (field * js_term) list
+  | Variant of label *  js_term option
   (* LAMBDA is very similar to eff's lambda - takes a variable and a computation *)
   | Lambda of abstraction
   (* EFFECT and HANDLER are new constructs, must be created entirely from scratch *)
@@ -41,37 +43,30 @@ type js_term =
   | Let of variable * js_term
   | Bind of js_term * abstraction
   (* MATCH is acually expresssion * (pattern * term) list.. but this differentiation is already done in core.. no need for that here *)
-  | Match of js_term * match_case list
+  | Match of js_term * (pattern_shape * abstraction) list
   (* RETURN is a construct known only in JS - it is implicit in Eff.. perhaps it originates in 'Value' *)
   | Return of js_term
   (* APPLY is function application.. it is very similar in JS to the one in Eff *)
   | Apply of js_term * js_term
   (* IF is a condition followed by a positive and negative term *)
-  | If of js_term * js_term * js_term
+  (* | If of js_term * js_term * js_term *)
   | Handle of js_term * js_term
   | Sequence of js_term list
   | Comment of string
 
-and match_case =
-  | ValueClause of abstraction
-  | EffectClause of effect * abstraction2
-
 and handler = 
-  { effect_clauses: (effect * abstraction2) list
+  { effect_clauses: (effect * js_term) list
   ; value_clause: abstraction
   ; finally_clause: abstraction }
 
-and abstraction = pattern_shape * js_term
+and abstraction = variable * js_term
 
-and abstraction2 = pattern_shape * pattern_shape * js_term
-  
 type cmd =
   | Term of js_term
-  (* | DefEffect of effect * (ty * ty)
-  | TopLet of (pattern * term) list
-  | TopLetRec of (variable * abstraction) list
-  | External of (variable * Type.ty * string)
-  | TyDef of (label * (CoreTypes.TyParam.t list * tydef)) list *)
+  (* | DefEffect of effect * (ty * ty) *)
+  | TopLet of (variable * js_term) list
+  (* | External of (variable * Type.ty * string) *)
+  (* | TyDef of (label * (CoreTypes.TyParam.t list * tydef)) list *)
 
 (* TODO Print the actual commands *)
 let print_cmd cmd format = ()
