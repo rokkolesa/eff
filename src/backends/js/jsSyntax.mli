@@ -8,16 +8,16 @@ type field = CoreTypes.Field.t
 
 (** Patterns *)
 type pattern_shape =
-  | PVar of variable
+  | PArbitrary
   | PTuple of pattern_shape list
   | PRecord of (field, pattern_shape) Assoc.t
   | PVariant of label * pattern_shape option
   | PConst of Const.t
-  | PNonbinding
   
 type projection =
   | Int of int
   | Field of field
+  | VariantProj
 
 type js_term =
   | Var of variable
@@ -51,11 +51,13 @@ type js_term =
   | Comment of string
 
 and handler = 
-  { effect_clauses: (effect * js_term) list
+  { effect_clauses: (effect * abstraction2) list
   ; value_clause: abstraction
   ; finally_clause: abstraction }
 
 and abstraction = variable * js_term
+
+and abstraction2 = variable * variable * js_term
 
 type cmd =
   | Term of js_term
