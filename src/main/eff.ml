@@ -23,6 +23,9 @@ let options =
     ; ( "--compile-multicore-ocaml"
       , Arg.String (fun filename -> Config.backend := Multicore filename)
       , "<file> Compile the Eff code into a Multicore OCaml file <file>" )
+    ; ( "--compile-js"
+      , Arg.String (fun filename -> Config.backend := Js filename)
+      , "<file> Compile the Eff code into a JavaScript file <file>" )
     ; ("--ascii", Arg.Set Config.ascii, " Use ASCII output")
     ; ( "-v"
       , Arg.Unit
@@ -132,10 +135,8 @@ let main =
       let f =
         match !Config.backend with
         | Config.Runtime -> Filename.concat Local.effdir "pervasives.eff"
-        | Config.Multicore _ ->
-            Filename.concat Local.effdir "multicorePervasives.eff"
-        | Config.Js _ ->
-            "TODO pervasives"
+        | Config.Multicore _ -> Filename.concat Local.effdir "multicorePervasives.eff"
+        | Config.Js _ -> Filename.concat Local.effdir "jsPervasives.eff"
       in
       enqueue_file (Load f) ) ;
   try

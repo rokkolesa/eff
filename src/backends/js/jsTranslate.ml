@@ -31,11 +31,11 @@ and of_computation {it; at} =
   | CoreSyntax.Value e -> Return (of_expression e)
   | CoreSyntax.Let (p_c_lst, c) ->
       let to_bind abs t = Bind (t, of_abstraction abs) in
-      List.fold_right to_bind p_c_lst  @@ of_computation c
+      List.fold_right to_bind p_c_lst @@ Return (of_computation c)
   | CoreSyntax.LetRec (var_abs_lst, c) ->
       let wrap_with_lambda (var, abs) = Let (var, Lambda (of_abstraction abs)) in
       let sequential_lets = List.map wrap_with_lambda var_abs_lst in
-      Sequence (sequential_lets @ [of_computation c])
+      Sequence (sequential_lets @ [Return (of_computation c)])
   | CoreSyntax.Match (e, abs_lst) ->
       let of_abstraction_with_shape ((p, c) as abs) = (shape_of p, of_abstraction abs) in
       Match (of_expression e, List.map of_abstraction_with_shape abs_lst)
@@ -98,7 +98,7 @@ and bindings {it; at} =
         List.map add_proj @@ bindings p
       in
         List.map proj_record_patt @@ Assoc.to_list assoc |> List.flatten
-  | CoreSyntax.PVariant (lbl, p_opt) -> 
+  | CoreSyntax.PVariant (_, p_opt) -> 
     (
       match p_opt with
       | None -> []

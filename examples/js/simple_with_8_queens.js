@@ -70,7 +70,7 @@ class Handler
     }
 }
 
-let bind = function (result, cont)
+const bind = function (result, cont)
 {
     console.log(".bind | " + result + " >>= (" + cont + ")")
     if(result instanceof Value)
@@ -83,7 +83,7 @@ let bind = function (result, cont)
     }
 }
 
-let evalWithoutFinally = function (result, handler)
+const evalWithoutFinally = function (result, handler)
 {
     console.log("handle " + result + " with " + handler)
     if(result instanceof Value)
@@ -104,7 +104,7 @@ let evalWithoutFinally = function (result, handler)
     }
 }
 
-let eval = function(result, handler)
+const eval = function(result, handler)
 {
     return bind(evalWithoutFinally(result, handler), handler.finallyClause);
 }
