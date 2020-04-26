@@ -41,7 +41,7 @@ type js_term =
   (* MATCH is acually expresssion * (pattern * term) list.. but this differentiation is already done in core.. no need for that here *)
   | Match of js_term * variable * (pattern_shape * abstraction) list
   (* RETURN is a construct known only in JS - it is implicit in Eff.. perhaps it originates in 'Value' *)
-  | Value of js_term
+  | Return of js_term
   (* APPLY is function application.. it is very similar in JS to the one in Eff *)
   | Apply of js_term * js_term
   (* IF is a condition followed by a positive and negative term *)

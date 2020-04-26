@@ -28,11 +28,11 @@ let rec of_expression {it; at} =
 
 and of_computation {it; at} = 
   match it with
-  | CoreSyntax.Value e -> Value (of_expression e)
+  | CoreSyntax.Value e -> of_expression e
   | CoreSyntax.Let (p_c_lst, c) ->
       let to_bind abs acc = 
         let (v, ts, t) = of_abstraction_generic abs in
-        Bind (t, (v, Sequence(ts @ [acc]))) in
+        Bind (t, (v, Sequence(ts @ [Return acc]))) in
       List.fold_right to_bind p_c_lst @@ of_computation c
   | CoreSyntax.LetRec (var_abs_lst, c) ->
       let wrap_with_lambda (var, abs) = Let (var, Lambda (of_abstraction abs)) in

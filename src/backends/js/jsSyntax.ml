@@ -45,7 +45,7 @@ type js_term =
   (* MATCH is acually expresssion * (pattern * term) list.. but this differentiation is already done in core.. no need for that here *)
   | Match of js_term * variable * (pattern_shape * abstraction) list
   (* RETURN is a construct known only in JS - it is implicit in Eff.. is always constructed as the last statement in a block *)
-  | Value of js_term
+  | Return of js_term
   (* APPLY is function application.. it is very similar in JS to the one in Eff *)
   | Apply of js_term * js_term
   | Handle of js_term * js_term
@@ -83,9 +83,9 @@ let rec print_term t ppf = match t with
   | Effect e -> print ppf "new Call (%t)" (print_effect e)
   | Handler h -> print ppf "Handler TODO..."
   | Let (v, t) -> print ppf "const %t = %t" (print_variable v) (print_term t)
-  | Bind (t, (m, c)) -> print ppf "bind (%t, %t => {%t})" (print_term t) (print_variable m) (print_term c)
+  | Bind (t, (m, c)) -> print ppf "bind (new Value(%t), %t => {%t})" (print_term t) (print_variable m) (print_term c)
   | Match (t, x, ps_abs_list) -> print ppf "Match TODO..."
-  | Value t -> print ppf "new Value (%t)" (print_term t)
+  | Return t -> print ppf "return %t;" (print_term t)
   | Apply (t1, t2) -> print ppf "%t (%t)" (print_term t1) (print_term t2)
   | Handle (t1, t2) -> print ppf "eval (%t, %t)" (print_term t1) (print_term t2)
   | Sequence ts -> Print.sequence "; " print_term ts ppf
