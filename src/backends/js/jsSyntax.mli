@@ -39,9 +39,9 @@ type js_term =
   | Let of variable * js_term
   | Bind of js_term * abstraction
   (* MATCH is acually expresssion * (pattern * term) list.. but this differentiation is already done in core.. no need for that here *)
-  | Match of js_term * (pattern_shape * abstraction) list
+  | Match of js_term * variable * (pattern_shape * abstraction) list
   (* RETURN is a construct known only in JS - it is implicit in Eff.. perhaps it originates in 'Value' *)
-  | Return of js_term
+  | Value of js_term
   (* APPLY is function application.. it is very similar in JS to the one in Eff *)
   | Apply of js_term * js_term
   (* IF is a condition followed by a positive and negative term *)
@@ -63,7 +63,7 @@ type cmd =
   | Term of js_term
   (* | DefEffect of effect * (ty * ty) *)
   | TopLet of (variable * js_term) list
-  (* | External of (variable * Type.ty * string) *)
+  | External of (variable * string)
   (* | TyDef of (label * (CoreTypes.TyParam.t list * tydef)) list *)
 
 val print_cmd : cmd -> Format.formatter -> unit

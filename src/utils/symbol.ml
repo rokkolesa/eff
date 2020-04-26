@@ -36,9 +36,15 @@ module String : Annotation with type t = string = struct
   let print safe desc n ppf =
     if safe then
       match desc.[0] with
-      | 'a' .. 'z' | '_' -> Format.fprintf ppf "%s" desc
+      | 'a' .. 'z' | '_' -> Format.fprintf ppf "%s_%d" desc n
       | '$' -> Format.fprintf ppf "_var_%d" n
-      | _ -> Format.fprintf ppf "_var_%d (* %s *)" n desc
+      | _ -> 
+        let (c_s, c_e) = 
+          match !Config.backend  with
+          | Config.Js _ -> ("/*", "*/")
+          | _  -> ("(*", "*)")
+        in
+        Format.fprintf ppf "_var_%d %s %s %s" n  c_s desc c_e
     else Format.fprintf ppf "%s" desc
 end
 

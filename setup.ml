@@ -7032,7 +7032,9 @@ let setup_t =
                            ("../src/backends/multicore/multicorePervasives.eff",
                              None);
                            ("../src/backends/js/jsPervasives.eff",
-                             None)
+                             None);
+                           ("../src/backends/js/jsPervasives.js",
+                             None);
                         ];
                       bs_findlib_extra_files = [];
                       bs_ccopt = [(OASISExpr.EBool true, [])];

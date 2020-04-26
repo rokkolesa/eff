@@ -28,28 +28,34 @@ let rec of_expression {it; at} =
 
 and of_computation {it; at} = 
   match it with
-  | CoreSyntax.Value e -> Return (of_expression e)
+  | CoreSyntax.Value e -> Value (of_expression e)
   | CoreSyntax.Let (p_c_lst, c) ->
-      let to_bind abs t = Bind (t, of_abstraction abs) in
-      List.fold_right to_bind p_c_lst @@ Return (of_computation c)
+      let to_bind abs acc = 
+        let (v, ts, t) = of_abstraction_generic abs in
+        Bind (t, (v, Sequence(ts @ [acc]))) in
+      List.fold_right to_bind p_c_lst @@ of_computation c
   | CoreSyntax.LetRec (var_abs_lst, c) ->
       let wrap_with_lambda (var, abs) = Let (var, Lambda (of_abstraction abs)) in
       let sequential_lets = List.map wrap_with_lambda var_abs_lst in
-      Sequence (sequential_lets @ [Return (of_computation c)])
+      Sequence (sequential_lets @ [of_computation c])
   | CoreSyntax.Match (e, abs_lst) ->
-      let of_abstraction_with_shape ((p, c) as abs) = (shape_of p, of_abstraction abs) in
-      Match (of_expression e, List.map of_abstraction_with_shape abs_lst)
+      let _match = CoreTypes.Variable.fresh "match" in
+      let of_abstraction_with_shape ((p, _) as abs) = (shape_of p, of_abstraction abs) in
+      Match (of_expression e, _match, List.map of_abstraction_with_shape abs_lst)
   | CoreSyntax.Apply (e1, e2) -> Apply (of_expression e1, of_expression e2)
   | CoreSyntax.Check c -> Comment "Check is not supported"
   | CoreSyntax.Handle (e, c) -> Handle (of_expression e, of_computation c)
 
-and of_abstraction (p, c) = 
+and of_abstraction_generic (p, c) = 
   let bindings = bindings p in 
   let _match = CoreTypes.Variable.fresh "match" in
   let wrap_with_projection (var, pr_list) = Let (var, Projection (_match, pr_list)) in
   let terms = List.map wrap_with_projection bindings in
-  (_match, Sequence (terms @ [of_computation c]))
+  (_match, terms, of_computation c)
 
+and of_abstraction abs = 
+  let (v, ts, t) = of_abstraction_generic abs in
+  (v, Sequence (ts @ [t]))
 
 and of_abstraction2 (p1, p2, c) = 
   let bindings1 = bindings p1 in 
