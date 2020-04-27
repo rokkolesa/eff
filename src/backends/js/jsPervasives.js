@@ -43,13 +43,10 @@ class Handler {
     }
 
     getHandleClause(result) {
-        if (!result instanceof Result) {
-            throw new Error("Cannot determine handling of a non-Result type!");
+        if (result instanceof Call) {
+            return this.effCs.find(effC => effC.op === result.op);
         }
-        if (result instanceof Value) {
-            return true;
-        }
-        return this.effCs.find(effC => effC.op === result.op);
+        return true;
     }
 
     toString() {
@@ -59,20 +56,15 @@ class Handler {
 
 const bind = function (result, cont) {
     console.log(".bind | " + result + " >>= (" + cont + ")")
-    if (result instanceof Value) {
-        return cont(result.value);
-    }
-    else if (result instanceof Call) {
+    if (result instanceof Call) {
         return new Call(result.op, result.args, y => bind(result.continuation(y), cont))
     }
+    return cont(result instanceof Value ? result.value : result);
 }
 
 const evalWithoutFinally = function (result, handler) {
-    console.log("handle " + result + " with " + handler)
-    if (result instanceof Value) {
-        return handler.valueClause(result.value);
-    }
-    else if (result instanceof Call) {
+    console.log("handle " + result + " with " + handler);
+    if (result instanceof Call) {
         let h = handler.getHandleClause(result);
         if (!h) {
             return new Call(result.op, result.args, y => eval(result.continuation(y), handler))
@@ -81,6 +73,7 @@ const evalWithoutFinally = function (result, handler) {
             return h.effC(result.arg, y => eval(result.continuation(y), handler));
         }
     }
+    return handler.valueClause(result instanceof Value ? result.value : result);
 }
 
 const eval = function (result, handler) {

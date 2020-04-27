@@ -83,7 +83,7 @@ let rec print_term t ppf = match t with
   | Effect e -> print ppf "new Call (%t)" (print_effect e)
   | Handler h -> print ppf "Handler TODO..."
   | Let (v, t) -> print ppf "const %t = %t" (print_variable v) (print_term t)
-  | Bind (t, (m, c)) -> print ppf "bind (new Value(%t), %t => {%t})" (print_term t) (print_variable m) (print_term c)
+  | Bind (t, (m, c)) -> print ppf "bind (%t, %t => {%t})" (print_term t) (print_variable m) (print_term c)
   | Match (t, x, ps_abs_list) -> print ppf "Match TODO..."
   | Return t -> print ppf "return %t;" (print_term t)
   | Apply (t1, t2) -> print ppf "%t (%t)" (print_term t1) (print_term t2)

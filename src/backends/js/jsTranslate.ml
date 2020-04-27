@@ -55,7 +55,7 @@ and of_abstraction_generic (p, c) =
 
 and of_abstraction abs = 
   let (v, ts, t) = of_abstraction_generic abs in
-  (v, Sequence (ts @ [t]))
+  (v, Sequence (ts @ [Return t]))
 
 and of_abstraction2 (p1, p2, c) = 
   let bindings1 = bindings p1 in 
@@ -65,7 +65,7 @@ and of_abstraction2 (p1, p2, c) =
   let wrap_with_projection m (var, pr_list) = Let (var, Projection (m, pr_list)) in
   let terms1 = List.map (wrap_with_projection _match1) bindings1 in
   let terms2 = List.map (wrap_with_projection _match2) bindings2 in
-  (_match1, _match2, Sequence (terms1 @ terms2 @ [of_computation c]))
+  (_match1, _match2, Sequence (terms1 @ terms2 @ [Return (of_computation c)]))
 
 and shape_of {it; at} =
   match it with
