@@ -1,111 +1,65 @@
-class Result{}
-class Value extends Result
-{
-    constructor(value)
-    {
-        super();
-        this.value = value;
-    }
-
-    toString()
-    {
-        return "Value(" + this.value + ")";
-    }
-}
-class Call extends Result
-{
-    constructor(op, arg, continuation)
-    {
-        super();
+class Call {
+    constructor(op, arg, continuation) {
         this.op = op;
         this.arg = arg;
         this.continuation = continuation;
     }
 
-    toString()
-    {
-        return "Call(op:'" + this.op +"', arg:'" + this.arg + "')" + this.continuation;
+    toString() {
+        return "Call(op:'" + this.op + "', arg:'" + this.arg + "')" + this.continuation;
     }
 }
 
-class HandlerClause
-{
-    constructor(op, effC)
-    {
+class HandlerClause {
+    constructor(op, effC) {
         this.op = op;
         this.effC = effC;
     }
 
-    toString()
-    {
-        return "HandlerClause(op:'" + this.op +"')";
+    toString() {
+        return "HandlerClause(op:'" + this.op + "')";
     }
 }
 
-class Handler
-{
-    constructor(effCs = [], valueClause = x => new Value(x), finallyClause = x => new Value(x))
-    {
+class Handler {
+    constructor(effCs = [], valueClause = x => x, finallyClause = x => x) {
         this.effCs = effCs;
         this.finallyClause = finallyClause;
         this.valueClause = valueClause;
     }
 
-    getHandleClause(result)
-    {
-        if(!result instanceof Result)
-        {
-            throw new Error("Cannot determine handling of a non-Result type!");
+    getHandleClause(result) {
+        if (result instanceof Call) {
+            return this.effCs.find(effC => effC.op === result.op);
         }
-        if(result instanceof Value)
-        {
-            return true;
-        }
-        return this.effCs.find(effC => effC.op === result.op);
     }
-    
-    toString()
-    {
-        return "Handler(effCs: '" + this.effCs.map(c => c.op).join(",")  + "')";
+
+    toString() {
+        return "Handler(effCs: '" + this.effCs.map(c => c.op).join(",") + "')";
     }
 }
 
-const bind = function (result, cont)
-{
+const bind = function (result, cont) {
     console.log(".bind | " + result + " >>= (" + cont + ")")
-    if(result instanceof Value)
-    {
-        return cont(result.value);
-    }
-    else if (result instanceof Call)
-    {
+    if (result instanceof Call) {
         return new Call(result.op, result.args, y => bind(result.continuation(y), cont))
     }
+    return cont(result);
 }
 
-const evalWithoutFinally = function (result, handler)
-{
-    console.log("handle " + result + " with " + handler)
-    if(result instanceof Value)
-    {
-        return handler.valueClause(result.value);
-    }
-    else if (result instanceof Call)
-    {
-        let h = handler.getHandleClause(result);
-        if(!h)
-        {
-            return new Call(result.op, result.args, y => eval(result.continuation(y), handler))
-        } 
-        else
-        {
-            return h.effC(result.arg, y => eval(result.continuation(y), handler));
+const evalWithoutFinally = function (result, handler) {
+    console.log("handle " + result + " with " + handler);
+    if (result instanceof Call) {
+        let clause = handler.getHandleClause(result);
+        if (clause) {
+            return clause.effC(result.arg, y => eval(result.continuation(y), handler));
         }
+        return new Call(result.op, result.args, y => eval(result.continuation(y), handler))
     }
+    return handler.valueClause(result);
 }
 
-const eval = function(result, handler)
-{
+const eval = function (result, handler) {
     return bind(evalWithoutFinally(result, handler), handler.finallyClause);
 }
 
@@ -165,13 +119,13 @@ let test = function (x)
 {
     if(x > 0)
     {
-        return new Value(42);
+        return 42;
     }
     else
     {
         return new Call(printEffect, "Boom!", (y => {
             console.log(y);
-            return new Value(y+1);
+            return y+1;
         }));
     }
 }
@@ -225,7 +179,7 @@ let amb = new Handler([
             console.log("amb.bind | " + choiceResult);
             if(choiceResult instanceof Success)
             {
-                return new Value(choiceResult);
+                return choiceResult;
             }
             else if (choiceResult instanceof Failure)
             {
@@ -241,7 +195,7 @@ let selectFrom = function(possibleCoordinates)
     console.log(possibleCoordinates);
     if(possibleCoordinates === null || possibleCoordinates.length === 0)
     {
-        return new Value(new None());
+        return new None();
     }
     const [x, ...xs] = possibleCoordinates;
     return new Call(selectEffect, null, y =>
@@ -249,7 +203,7 @@ let selectFrom = function(possibleCoordinates)
             if(y === true)
             {
                 console.log("Continuing with true");
-                return new Value(new Some(x));
+                return new Some(x);
             }
             console.log("Continuing with false");
             return selectFrom(xs);
@@ -272,7 +226,7 @@ let findQueens = function(x, queens)
 {
     if(x >= 9 )
     {
-        return new Value(new Success(queens));
+        return new Success(queens);
     }
 
     return bind(selectFrom(available(x,queens)), selection =>
@@ -281,7 +235,7 @@ let findQueens = function(x, queens)
         console.log("findQueens.bind | " + selection);
         if(selection instanceof None)
         {
-            return new Value(new Failure());
+            return new Failure();
         }
         let newQueens = [[x, selection.value]].concat(queens);
         console.log("findQueens.bind | ");
