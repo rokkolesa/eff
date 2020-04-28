@@ -42,7 +42,7 @@ let conversion_functions =
   Assoc.of_list
     [ ("to_string", Exists "String")
     ; ("float_of_int", Exists "x => x")
-    ; ("int_of_float", Exists "Math.floor") ]
+    ; ("int_of_float", Exists "x => ~~x") ]
 
   
 (* TODO rokk make a top handler and enable it  *)
