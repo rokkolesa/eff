@@ -77,7 +77,7 @@ let rec print_term t ppf = match t with
   | Record f_t_list -> print ppf "{%t}" (Print.sequence ", " print_record_term f_t_list)
   | Variant (lbl, t) -> print_variant lbl t ppf
   | Lambda a -> print ppf "%t" (print_abstraction a)
-  | Effect e -> print ppf "new Call (%t)" (print_effect e)
+  | Effect e -> print ppf "(args => new Call ('%t', args))" (print_effect e)
   | Handler {effect_clauses; value_clause; finally_clause} -> print ppf "new Handler(%t, %t, %t);" (print_handler_clauses effect_clauses) (print_abstraction value_clause) (print_abstraction finally_clause) 
   | Let (v, t) -> print ppf "const %t = %t" (print_variable v) (print_term t)
   | Bind (t, a) -> print ppf "bind (%t, %t)" (print_term t) (print_abstraction a)
@@ -92,7 +92,7 @@ let rec print_term t ppf = match t with
 
   and print_field f = CoreTypes.Field.print ~safe:true f
 
-  and print_effect e = CoreTypes.Effect.print ~safe:true e
+  and print_effect e = CoreTypes.Effect.print e
   
   and print_record_term (f, t) ppf = print ppf "%t: %t" (print_field f) (print_term t)
 
@@ -101,7 +101,7 @@ let rec print_term t ppf = match t with
   and print_abstraction2 (v1, v2, t) ppf = print ppf "(%t, %t) => {%t}" (print_variable v1) (print_variable v2) (print_term t)
 
   and print_handler_clauses hcs ppf = 
-    let print_handler_clause (effect, abs2) ppf = print ppf "new Handler(%t, %t)" (print_effect effect) (print_abstraction2 abs2) in
+    let print_handler_clause (effect, abs2) ppf = print ppf "new HandlerClause('%t', %t)" (print_effect effect) (print_abstraction2 abs2) in
     print ppf "[%t]" (Print.sequence ", " print_handler_clause hcs);
 
   and print_projection p ppf = match p with
