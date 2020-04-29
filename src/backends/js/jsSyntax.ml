@@ -65,10 +65,7 @@ and abstraction2 = variable * variable * js_term
 
 type cmd =
   | Term of js_term
-  (* | DefEffect of effect * (ty * ty) *)
-  | TopLet of (variable * js_term) list
   | External of (variable * string)
-  (* | TyDef of (label * (CoreTypes.TyParam.t list * tydef)) list *)
 
 let print = Format.fprintf
 
@@ -119,7 +116,6 @@ let rec print_term t ppf = match t with
 
 let print_cmd cmd ppf = match cmd with
   | Term t -> print ppf "%t;@." (print_term t)
-  | TopLet lst -> print ppf "%s@." "Top let TODO..."
   | External (x, f) -> (
     match Assoc.lookup f JsExternal.values with
     | None -> Error.runtime "Unknown external symbol %s." f

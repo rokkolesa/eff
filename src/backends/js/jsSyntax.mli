@@ -61,9 +61,6 @@ and abstraction2 = variable * variable * js_term
 
 type cmd =
   | Term of js_term
-  (* | DefEffect of effect * (ty * ty) *)
-  | TopLet of (variable * js_term) list
   | External of (variable * string)
-  (* | TyDef of (label * (CoreTypes.TyParam.t list * tydef)) list *)
 
 val print_cmd : cmd -> Format.formatter -> unit
