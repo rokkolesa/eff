@@ -36,11 +36,8 @@ module Backend (P : BackendParameters) : BackendSignature.T = struct
     state
 
   let process_top_let state defs vars = 
-    (* TODO do we need to make some variables up? or just use the match variable to get the correct bindings.. probably this.. *)
-    let top_let_terms = List.map JsTranslate.of_abstraction defs in
-    let wrap_with_lambda (var, term) = JsSyntax.Let (var, term) in
-    let top_let = List.map wrap_with_lambda top_let_terms in
-    update state @@ Term (Sequence top_let)
+    let top_let_terms = List.map JsTranslate.of_abstraction_top defs in
+    update state @@ Term (Sequence top_let_terms)
 
   let process_top_let_rec state defs vars = 
     let wrap_with_lambda (var, abs) = JsSyntax.Let (var, Lambda (JsTranslate.of_abstraction abs)) in
