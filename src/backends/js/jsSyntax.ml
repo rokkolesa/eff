@@ -76,11 +76,11 @@ let rec print_term t ppf = match t with
   | List ts -> print ppf "[%t]" (Print.sequence ", " print_term ts)
   | Record f_t_list -> print ppf "{%t}" (Print.sequence ", " print_record_term f_t_list)
   | Variant (lbl, t) -> print_variant lbl t ppf
-  | Lambda (v, t) -> print ppf "function (%t) {%t}" (print_variable v) (print_term t)
+  | Lambda a -> print ppf "%t" (print_abstraction a)
   | Effect e -> print ppf "new Call (%t)" (print_effect e)
-  | Handler h -> print ppf "Handler TODO..."
+  | Handler {effect_clauses; value_clause; finally_clause} -> print ppf "new Handler(%t, %t, %t);" (print_handler_clauses effect_clauses) (print_abstraction value_clause) (print_abstraction finally_clause) 
   | Let (v, t) -> print ppf "const %t = %t" (print_variable v) (print_term t)
-  | Bind (t, (m, c)) -> print ppf "bind (%t, %t => {%t})" (print_term t) (print_variable m) (print_term c)
+  | Bind (t, a) -> print ppf "bind (%t, %t)" (print_term t) (print_abstraction a)
   | Match (t, x, ps_abs_list) -> print ppf "Match TODO..."
   | Return t -> print ppf "return %t;" (print_term t)
   | Apply (t1, t2) -> print ppf "%t (%t)" (print_term t1) (print_term t2)
@@ -95,6 +95,14 @@ let rec print_term t ppf = match t with
   and print_effect e = CoreTypes.Effect.print ~safe:true e
   
   and print_record_term (f, t) ppf = print ppf "%t: %t" (print_field f) (print_term t)
+
+  and print_abstraction (v, t) ppf = print ppf "%t => {%t}" (print_variable v) (print_term t)
+
+  and print_abstraction2 (v1, v2, t) ppf = print ppf "(%t, %t) => {%t}" (print_variable v1) (print_variable v2) (print_term t)
+
+  and print_handler_clauses hcs ppf = 
+    let print_handler_clause (effect, abs2) ppf = print ppf "new Handler(%t, %t)" (print_effect effect) (print_abstraction2 abs2) in
+    print ppf "[%t]" (Print.sequence ", " print_handler_clause hcs);
 
   and print_projection p ppf = match p with
   | Int i -> print ppf "[%d]" i

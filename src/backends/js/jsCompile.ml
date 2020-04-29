@@ -22,7 +22,7 @@ module Backend (P : BackendParameters) : BackendSignature.T = struct
   (* Processing functions *)
   let process_computation state c _ = 
     let t = JsTranslate.of_computation c in
-    update state (Term t)
+    update state @@ Term t
 
   let process_type_of state c _ = 
     Print.warning
@@ -30,7 +30,6 @@ module Backend (P : BackendParameters) : BackendSignature.T = struct
     state
 
   let process_def_effect state (eff, _) = 
-    (* update state @@ Term (Effect eff) *)
     Print.warning
       "[effect] commands are ignored when compiling to JavaScript." ;
     state
@@ -45,7 +44,7 @@ module Backend (P : BackendParameters) : BackendSignature.T = struct
     update state @@ Term (Sequence sequential_lets)
 
   let process_external state (x, _, f) = 
-    update state (External (x, f))
+    update state @@ External (x, f)
 
   let process_tydef state tydefs = 
     Print.warning

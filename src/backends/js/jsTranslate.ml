@@ -44,7 +44,8 @@ and of_computation {it; at} =
       Match (of_expression e, _match, List.map of_abstraction_with_shape abs_lst)
   | CoreSyntax.Apply (e1, e2) -> Apply (of_expression e1, of_expression e2)
   | CoreSyntax.Check c -> Comment "Check is not supported"
-  | CoreSyntax.Handle (e, c) -> Handle (of_expression e, of_computation c)
+  (* TODO turn these arguments around - should also update jsPervasives.js *)
+  | CoreSyntax.Handle (e, c) -> Handle (of_computation c, of_expression e)
 
 and of_abstraction_generic (p, c) = 
   let bindings = bindings p in 
