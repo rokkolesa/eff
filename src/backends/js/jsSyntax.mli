@@ -31,6 +31,7 @@ type js_term =
   | Variant of label *  js_term option
   (* LAMBDA is very similar to eff's lambda - takes a variable and a computation *)
   | Lambda of abstraction
+  | Thunk of js_term
   (* EFFECT and HANDLER are new constructs, must be created entirely from scratch *)
   | Effect of effect
   | Handler of handler
