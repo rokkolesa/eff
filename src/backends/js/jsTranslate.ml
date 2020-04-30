@@ -60,7 +60,8 @@ and of_abstraction abs =
 
 and of_abstraction_top abs = 
   let (v, ts, t) = of_abstraction_generic abs in
-  Sequence (Let (v, t) :: ts)
+  let tophandler = CoreTypes.Variable.fresh "_js_tophandler" in
+  Sequence (Let (v, Handle (t, Var tophandler)) :: ts)
 
 and of_abstraction2 (p1, p2, c) = 
   let bindings1 = bindings p1 in 
