@@ -44,7 +44,7 @@ class Handler {
 const bind = function (result, cont) {
     console.log(".bind | " + result + " >>= (" + cont + ")")
     if (result instanceof Call) {
-        return new Call(result.op, result.args, y => bind(result.continuation(y), cont))
+        return new Call(result.op, result.arg, y => bind(result.continuation(y), cont))
     }
     return cont(result);
 }
@@ -56,7 +56,7 @@ const evalWithoutFinally = function (result, handler) {
         if (clause) {
             return clause.effC(result.arg, y => eval(result.continuation(y), handler));
         }
-        return new Call(result.op, result.args, y => eval(result.continuation(y), handler))
+        return new Call(result.op, result.arg, y => eval(result.continuation(y), handler))
     }
     return handler.valueClause(result);
 }
