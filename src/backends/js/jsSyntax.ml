@@ -82,7 +82,7 @@ let rec print_term term ppf = match term with
   | Thunk t -> print ppf "%t" (print_thunk t)
   | Effect e -> print ppf "(args => new Call ('%t', args))" (print_effect e)
   | Handler {effect_clauses; value_clause; finally_clause} -> print ppf "new Handler(%t, %t, %t);" (print_handler_clauses effect_clauses) (print_abstraction value_clause) (print_abstraction finally_clause) 
-  | Let (v, t) -> print ppf "var %t = %t;" (print_variable v) (print_term t)
+  | Let (v, t) -> print ppf "let %t = %t;" (print_variable v) (print_term t)
   | Bind (t, a) -> print ppf "bind (%t, %t)" (print_term t) (print_abstraction a)
   | Match (t, x, ps_abs_list) -> print ppf "Match TODO..."
   | Return t -> print ppf "return %t;" (print_term t)
