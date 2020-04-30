@@ -79,12 +79,7 @@ let rec print_term term ppf = match term with
   | Record f_t_list -> print ppf "{%t}" (Print.sequence ", " print_record_term f_t_list)
   | Variant (lbl, t) -> print_variant lbl t ppf
   | Lambda a -> print ppf "%t" (print_abstraction a)
-  | Thunk t -> 
-  (
-    match t with
-      | Sequence _ -> print ppf "(() => {%t})()" (print_term t)
-      | _ -> print ppf "(() => {return %t;})()" (print_term t)
-  )
+  | Thunk t -> print ppf "%t" (print_thunk t)
   | Effect e -> print ppf "(args => new Call ('%t', args))" (print_effect e)
   | Handler {effect_clauses; value_clause; finally_clause} -> print ppf "new Handler(%t, %t, %t);" (print_handler_clauses effect_clauses) (print_abstraction value_clause) (print_abstraction finally_clause) 
   | Let (v, t) -> print ppf "var %t = %t;" (print_variable v) (print_term t)
@@ -103,6 +98,10 @@ let rec print_term term ppf = match term with
   and print_effect e = CoreTypes.Effect.print e
   
   and print_record_term (f, t) ppf = print ppf "%t: %t" (print_field f) (print_term t)
+
+  and print_thunk t ppf = match t with
+    | Sequence _ -> print ppf "(() => {%t})()" (print_term t)
+    | _ -> print ppf "(() => {return %t;})()" (print_term t)
 
   and print_abstraction (v, t) ppf = match t with
     | Sequence _ -> print ppf "%t => {%t}" (print_variable v) (print_term t)
