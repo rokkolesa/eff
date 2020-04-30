@@ -39,7 +39,7 @@ and of_computation {it; at} =
       let sequential_lets = List.map wrap_with_lambda var_abs_lst in
       Sequence (sequential_lets @ [Return (of_computation c)])
   | CoreSyntax.Match (e, abs_lst) ->
-      let _match = CoreTypes.Variable.fresh "match" in
+      let _match = CoreTypes.Variable.fresh "$match" in
       let of_abstraction_with_shape ((p, _) as abs) = (shape_of p, of_abstraction abs) in
       Match (of_expression e, _match, List.map of_abstraction_with_shape abs_lst)
   | CoreSyntax.Apply (e1, e2) -> Apply (of_expression e1, of_expression e2)
@@ -49,7 +49,7 @@ and of_computation {it; at} =
 
 and of_abstraction_generic (p, c) = 
   let bindings = bindings p in 
-  let _match = CoreTypes.Variable.fresh "match" in
+  let _match = CoreTypes.Variable.fresh "$match" in
   let wrap_with_projection (var, pr_list) = Let (var, Projection (_match, pr_list)) in
   let terms = List.map wrap_with_projection bindings in
   (_match, terms, of_computation c)
@@ -65,8 +65,8 @@ and of_abstraction_top abs =
 and of_abstraction2 (p1, p2, c) = 
   let bindings1 = bindings p1 in 
   let bindings2 = bindings p2 in 
-  let _match1 = CoreTypes.Variable.fresh "match" in
-  let _match2 = CoreTypes.Variable.fresh "match" in
+  let _match1 = CoreTypes.Variable.fresh "$match" in
+  let _match2 = CoreTypes.Variable.fresh "$match" in
   let wrap_with_projection m (var, pr_list) = Let (var, Projection (m, pr_list)) in
   let terms1 = List.map (wrap_with_projection _match1) bindings1 in
   let terms2 = List.map (wrap_with_projection _match2) bindings2 in

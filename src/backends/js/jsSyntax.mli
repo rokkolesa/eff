@@ -62,6 +62,7 @@ and abstraction2 = variable * variable * js_term
 
 type cmd =
   | Term of js_term
+  | TopLet of js_term list
   | External of (variable * string)
 
 val print_cmd : cmd -> Format.formatter -> unit

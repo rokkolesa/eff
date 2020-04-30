@@ -1,3 +1,9 @@
+
+(* Top level effects. *)
+effect Print : string -> unit
+
+external _js_tophandler : 'a => 'a = "_js_tophandler"
+
 (* Integers and Floats *)
 external ( = ) : 'a -> 'a -> bool = "==="
 
@@ -72,3 +78,5 @@ external string_length : string -> int = "string_length"
 external string_of_float : float -> string  = "to_string"
 
 external string_of_int : int -> string  = "to_string"
+
+external to_string : 'a -> string  = "to_string" 

@@ -36,12 +36,12 @@ module Backend (P : BackendParameters) : BackendSignature.T = struct
 
   let process_top_let state defs vars = 
     let top_let_terms = List.map JsTranslate.of_abstraction_top defs in
-    update state @@ Term (Sequence top_let_terms)
+    update state @@ TopLet top_let_terms
 
   let process_top_let_rec state defs vars = 
     let wrap_with_lambda (var, abs) = JsSyntax.Let (var, Lambda (JsTranslate.of_abstraction abs)) in
     let sequential_lets = List.map wrap_with_lambda @@ Assoc.to_list defs in
-    update state @@ Term (Sequence sequential_lets)
+    update state @@ TopLet sequential_lets
 
   let process_external state (x, _, f) = 
     update state @@ External (x, f)

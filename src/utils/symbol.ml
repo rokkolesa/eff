@@ -36,7 +36,7 @@ module String : Annotation with type t = string = struct
   let print safe desc n ppf =
     if safe then
       match desc.[0] with
-      | 'a' .. 'z' | '_' -> Format.fprintf ppf "%s_%d" desc n
+      | 'a' .. 'z' | '_' -> Format.fprintf ppf "%s" desc
       | '$' -> Format.fprintf ppf "_var_%d" n
       | _ -> 
         let (c_s, c_e) = 

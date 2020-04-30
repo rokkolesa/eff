@@ -66,6 +66,7 @@ and abstraction2 = variable * variable * js_term
 
 type cmd =
   | Term of js_term
+  | TopLet of js_term list
   | External of (variable * string)
 
 let print = Format.fprintf
@@ -86,7 +87,7 @@ let rec print_term term ppf = match term with
   )
   | Effect e -> print ppf "(args => new Call ('%t', args))" (print_effect e)
   | Handler {effect_clauses; value_clause; finally_clause} -> print ppf "new Handler(%t, %t, %t);" (print_handler_clauses effect_clauses) (print_abstraction value_clause) (print_abstraction finally_clause) 
-  | Let (v, t) -> print ppf "const %t = %t" (print_variable v) (print_term t)
+  | Let (v, t) -> print ppf "var %t = %t;" (print_variable v) (print_term t)
   | Bind (t, a) -> print ppf "bind (%t, %t)" (print_term t) (print_abstraction a)
   | Match (t, x, ps_abs_list) -> print ppf "Match TODO..."
   | Return t -> print ppf "return %t;" (print_term t)
@@ -130,7 +131,8 @@ let rec print_term term ppf = match term with
 
 
 let print_cmd cmd ppf = match cmd with
-  | Term t -> print ppf "%t;@." (print_term t)
+  | Term t -> print ppf "console.log(eval(%t, _js_tophandler));@." @@ print_term t
+  | TopLet ts -> print ppf "%t@." @@ print_term (Sequence ts)
   | External (x, f) -> (
     match Assoc.lookup f JsExternal.values with
     | None -> Error.runtime "Unknown external symbol %s." f
