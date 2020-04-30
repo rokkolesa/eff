@@ -104,9 +104,13 @@ let rec print_term term ppf = match term with
   
   and print_record_term (f, t) ppf = print ppf "%t: %t" (print_field f) (print_term t)
 
-  and print_abstraction (v, t) ppf = print ppf "%t => {%t}" (print_variable v) (print_term t)
+  and print_abstraction (v, t) ppf = match t with
+    | Sequence _ -> print ppf "%t => {%t}" (print_variable v) (print_term t)
+    | _ -> print ppf "%t => {return %t;}" (print_variable v) (print_term t)
 
-  and print_abstraction2 (v1, v2, t) ppf = print ppf "(%t, %t) => {%t}" (print_variable v1) (print_variable v2) (print_term t)
+  and print_abstraction2 (v1, v2, t) ppf = match t with 
+    | Sequence _ -> print ppf "(%t, %t) => {%t}" (print_variable v1) (print_variable v2) (print_term t)
+    | _ -> print ppf "(%t, %t) => {return %t;}" (print_variable v1) (print_variable v2) (print_term t)
 
   and print_handler_clauses hcs ppf = 
     let print_handler_clause (effect, abs2) ppf = print ppf "new HandlerClause('%t', %t)" (print_effect effect) (print_abstraction2 abs2) in

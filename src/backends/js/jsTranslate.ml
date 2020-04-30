@@ -37,7 +37,7 @@ and of_computation {it; at} =
   | CoreSyntax.LetRec (var_abs_lst, c) ->
       let wrap_with_lambda (var, abs) = Let (var, Lambda (of_abstraction abs)) in
       let sequential_lets = List.map wrap_with_lambda var_abs_lst in
-      Sequence (sequential_lets @ [Return (of_computation c)])
+      Thunk (Sequence (sequential_lets @ [Return (of_computation c)]))
   | CoreSyntax.Match (e, abs_lst) ->
       let _match = CoreTypes.Variable.fresh "$match" in
       let of_abstraction_with_shape ((p, _) as abs) = (shape_of p, of_abstraction abs) in
@@ -60,7 +60,7 @@ and of_abstraction abs =
 
 and of_abstraction_top abs = 
   let (v, ts, t) = of_abstraction_generic abs in
-  Sequence (Let (v, Thunk t) :: ts)
+  Sequence (Let (v, t) :: ts)
 
 and of_abstraction2 (p1, p2, c) = 
   let bindings1 = bindings p1 in 
