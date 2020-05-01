@@ -72,12 +72,12 @@ type cmd =
 let print = Format.fprintf
 
 let rec print_term term ppf = match term with
-  | Var v -> print_variable v ppf
-  | Const c -> Const.print c ppf
+  | Var v -> print ppf "%t" (print_variable v)
+  | Const c -> print ppf "%t" (Const.print c)
   | Projection (m, ps) -> print ppf "%t%t" (print_variable m) (Print.sequence "" print_projection ps) 
   | List ts -> print ppf "[%t]" (Print.sequence ", " print_term ts)
   | Record f_t_list -> print ppf "{%t}" (Print.sequence ", " print_record_term f_t_list)
-  | Variant (lbl, t) -> print_variant lbl t ppf
+  | Variant (lbl, t) -> print ppf "%t" (print_variant lbl t)
   | Lambda a -> print ppf "%t" (print_abstraction a)
   | Thunk t -> print ppf "%t" (print_thunk t)
   (* TODO how to create continuation? *)
@@ -89,7 +89,7 @@ let rec print_term term ppf = match term with
   | Return t -> print ppf "return %t;" (print_term t)
   | Apply (t1, t2) -> print ppf "%t (%t)" (print_term t1) (print_term t2)
   | Handle (t1, t2) -> print ppf "eval (%t, %t)" (print_term t1) (print_term t2)
-  | Sequence ts -> Print.sequence "; " print_term ts ppf
+  | Sequence ts -> print ppf "%t" (Print.sequence "; " print_term ts)
   | Comment s -> print ppf "/* %s */" s
 
   and print_variable v = CoreTypes.Variable.print ~safe:true v
