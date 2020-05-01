@@ -80,6 +80,7 @@ let rec print_term term ppf = match term with
   | Variant (lbl, t) -> print_variant lbl t ppf
   | Lambda a -> print ppf "%t" (print_abstraction a)
   | Thunk t -> print ppf "%t" (print_thunk t)
+  (* TODO how to create continuation? *)
   | Effect e -> print ppf "(args => new Call ('%t', args))" (print_effect e)
   | Handler {effect_clauses; value_clause; finally_clause} -> print ppf "new Handler(%t, %t, %t);" (print_handler_clauses effect_clauses) (print_abstraction value_clause) (print_abstraction finally_clause) 
   | Let (v, t) -> print ppf "let %t = %t;" (print_variable v) (print_term t)
@@ -94,6 +95,8 @@ let rec print_term term ppf = match term with
   and print_variable v = CoreTypes.Variable.print ~safe:true v
 
   and print_field f = CoreTypes.Field.print ~safe:true f
+
+  and print_label lbl = CoreTypes.Label.print ~safe:true lbl
 
   and print_effect e = CoreTypes.Effect.print e
   
@@ -121,8 +124,8 @@ let rec print_term term ppf = match term with
   | VariantProj -> print ppf ".arg"
 
   and print_variant lbl t_opt ppf = match t_opt with
-  | None -> print ppf "{'name': %t, 'arg': null}" (CoreTypes.Label.print ~safe:true lbl)
-  | Some t -> print ppf "{'name': %t, 'arg': %t}" (CoreTypes.Label.print ~safe:true lbl) (print_term t)
+  | None -> print ppf "{'name': %t, 'arg': null}" (print_label lbl)
+  | Some t -> print ppf "{'name': %t, 'arg': %t}" (print_label lbl) (print_term t)
 
   and print_external name symbol_name translation ppf =
   match translation with
