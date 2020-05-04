@@ -40,22 +40,25 @@ and of_computation {it; at} =
       Thunk (Sequence (sequential_lets @ [Return (of_computation c)]))
   | CoreSyntax.Match (e, abs_lst) ->
       let _match = CoreTypes.Variable.fresh "$match" in
-      let of_abstraction_with_shape ((p, _) as abs) = (shape_of p, of_abstraction abs) in
-      Match (of_expression e, _match, List.map of_abstraction_with_shape abs_lst)
-  | CoreSyntax.Apply (e1, e2) -> Apply (of_expression e1, of_expression e2)
+      let of_abstraction_with_shape ((p, _) as abs) = (shape_of p, of_abstraction abs ~_match:_match) in
+      Thunk (Sequence (
+        Let (_match, of_expression e) ::
+        Match (_match, List.map of_abstraction_with_shape abs_lst) ::
+        []
+      ))
+      | CoreSyntax.Apply (e1, e2) -> Apply (of_expression e1, of_expression e2)
   | CoreSyntax.Check c -> Comment "Check is not supported"
   (* TODO turn these arguments around - should also update jsPervasives.js *)
   | CoreSyntax.Handle (e, c) -> Handle (of_computation c, of_expression e)
 
-and of_abstraction_generic (p, c) = 
+and of_abstraction_generic ?(_match = CoreTypes.Variable.fresh "$match") (p, c) = 
   let bindings = bindings p in 
-  let _match = CoreTypes.Variable.fresh "$match" in
   let wrap_with_projection (var, pr_list) = Let (var, Projection (_match, pr_list)) in
   let terms = List.map wrap_with_projection bindings in
   (_match, terms, of_computation c)
 
-and of_abstraction abs = 
-  let (v, ts, t) = of_abstraction_generic abs in
+and of_abstraction ?(_match = CoreTypes.Variable.fresh "$match") abs = 
+  let (v, ts, t) = of_abstraction_generic abs ~_match:_match in
   (v, Sequence (ts @ [Return t]))
 
 and of_abstraction_top abs = 
@@ -78,7 +81,7 @@ and shape_of {it; at} =
   | CoreSyntax.PNonbinding -> PArbitrary
   (* constant is not bound to anything.. it's here only for choosing the correct branch *)
   | CoreSyntax.PConst const -> PConst const
-  | CoreSyntax.PVar var -> PArbitrary
+  | CoreSyntax.PVar _ -> PArbitrary
   | CoreSyntax.PAnnotated (p, _) -> shape_of p
   | CoreSyntax.PAs (p, _) -> shape_of p
   | CoreSyntax.PTuple ps -> PTuple (List.map shape_of ps)

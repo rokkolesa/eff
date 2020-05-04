@@ -44,7 +44,7 @@ type js_term =
   | Let of variable * js_term
   | Bind of js_term * abstraction
   (* MATCH is acually expresssion * (pattern * term) list.. but this differentiation is already done in core.. no need for that here *)
-  | Match of js_term * variable * (pattern_shape * abstraction) list
+  | Match of variable * (pattern_shape * abstraction) list
   (* RETURN is a construct known only in JS - it is implicit in Eff.. is always constructed as the last statement in a block *)
   | Return of js_term
   (* APPLY is function application.. it is very similar in JS to the one in Eff *)
@@ -73,7 +73,7 @@ let print = Format.fprintf
 
 let rec print_term term ppf = match term with
   | Var v -> print ppf "%t" (print_variable v)
-  | Const c -> print ppf "%t" (Const.print c)
+  | Const c -> print ppf "%t" (print_constant c)
   | Projection (m, ps) -> print ppf "%t%t" (print_variable m) (Print.sequence "" print_projection ps) 
   | List ts -> print ppf "[%t]" (Print.sequence ", " print_term ts)
   | Record f_t_list -> print ppf "{%t}" (Print.sequence ", " print_record_term f_t_list)
@@ -85,18 +85,20 @@ let rec print_term term ppf = match term with
   | Handler {effect_clauses; value_clause; finally_clause} -> print ppf "new Handler(%t, %t, %t);" (print_handler_clauses effect_clauses) (print_abstraction value_clause) (print_abstraction finally_clause) 
   | Let (v, t) -> print ppf "let %t = %t;" (print_variable v) (print_term t)
   | Bind (t, a) -> print ppf "bind (%t, %t)" (print_term t) (print_abstraction a)
-  | Match (t, x, ps_abs_list) -> print ppf "Match TODO..."
+  | Match (x, ps_abs_list) -> print ppf "%t" (Print.sequence " " print_match_clause (List.map (fun abs -> (x, abs)) ps_abs_list))
   | Return t -> print ppf "return %t;" (print_term t)
   | Apply (t1, t2) -> print ppf "%t (%t)" (print_term t1) (print_term t2)
   | Handle (t1, t2) -> print ppf "eval (%t, %t)" (print_term t1) (print_term t2)
   | Sequence ts -> print ppf "%t" (Print.sequence "; " print_term ts)
   | Comment s -> print ppf "/* %s */" s
 
+  and print_constant c = Const.print c
+
   and print_variable v = CoreTypes.Variable.print ~safe:true v
 
   and print_field f = CoreTypes.Field.print ~safe:true f
 
-  and print_label lbl = CoreTypes.Label.print ~safe:true lbl
+  and print_label lbl = CoreTypes.Label.print lbl
 
   and print_effect e = CoreTypes.Effect.print e
   
@@ -119,13 +121,29 @@ let rec print_term term ppf = match term with
     print ppf "[%t]" (Print.sequence ", " print_handler_clause hcs);
 
   and print_projection p ppf = match p with
-  | Int i -> print ppf "[%d]" i
-  | Field f -> print ppf ".%t" (print_field f)
-  | VariantProj -> print ppf ".arg"
+    | Int i -> print ppf "[%d]" i
+    | Field f -> print ppf ".%t" (print_field f)
+    | VariantProj -> print ppf ".arg"
 
   and print_variant lbl t_opt ppf = match t_opt with
-  | None -> print ppf "{'name': %t, 'arg': null}" (print_label lbl)
-  | Some t -> print ppf "{'name': %t, 'arg': %t}" (print_label lbl) (print_term t)
+    | None -> print ppf "{'name': '%t'}" (print_label lbl)
+    | Some t -> print ppf "{'name': '%t', 'arg': %t}" (print_label lbl) (print_term t)
+
+  and print_match_clause (x, (ps, (_, t))) ppf = match t with
+    | Sequence _ -> print ppf "if (satisfies(%t, %t)) { %t }" (print_pattern_shape ps) (print_variable x) (print_term t)
+    | _ -> print ppf "if (satisfies(%t, %t)) { return %t; }" (print_pattern_shape ps) (print_variable x) (print_term t)
+
+  and print_pattern_shape p ppf = match p with
+    | PArbitrary -> print ppf "new PatternShape(PatternType.ARBITRARY)"
+    | PConst c -> print ppf "new PatternShape(PatternType.CONSTANT, %t)" (print_constant c)
+    | PTuple ps -> print ppf "new PatternShape(PatternType.TUPLE, undefined, [%t])" (Print.sequence ", " print_pattern_shape ps)
+    | PRecord pa -> print ppf "new PatternShape(PatternType.RECORD, undefined, [%t])" (Print.sequence ", " print_pattern_shape (List.map (fun (_, shp) -> shp) @@ Assoc.to_list pa))
+    | PVariant (lbl, ps) ->
+      (
+        match ps with
+          | Some shp -> print ppf "new PatternShape(PatternType.VARIANT, '%t', [%t])" (print_label lbl) (print_pattern_shape shp)
+          | None -> print ppf "new PatternShape(PatternType.VARIANT, '%t')" (print_label lbl)
+      )
 
   and print_external name symbol_name translation ppf =
   match translation with

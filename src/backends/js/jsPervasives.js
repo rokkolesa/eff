@@ -65,4 +65,42 @@ const eval = function (result, handler) {
     return bind(evalWithoutFinally(result, handler), handler.finallyClause);
 }
 
+class PatternShape {
+    constructor(type, value, shapes = []) {
+        this.type = type;
+        this.value = value;
+        this.shapes = shapes;
+    }
+}
+
+const PatternType = Object.freeze({
+    ARBITRARY: Symbol("ARBITRARY"),
+    CONSTANT: Symbol("CONSTANT"),
+    TUPLE: Symbol("TUPLE"),
+    RECORD: Symbol("RECORD"),
+    VARIANT: Symbol("VARIANT")
+});
+
+const satisfies = function (patternShape, value) {
+    if (patternShape.type === PatternType.ARBITRARY) {
+        return true;
+    }
+    if (patternShape.type === PatternType.CONSTANT) {
+        return patternShape.value === value;
+    }
+    if (patternShape.type === PatternType.VARIANT) {
+        return patternShape.value === value.name
+            && patternShape.shapes.every(s => satisfies(s, value.arg));
+    }
+    if (patternShape.type === PatternType.TUPLE) {
+        return patternShape.shapes.length === Object.keys(value).length
+            && patternShape.shapes.every((s, i) => satisfies(s, value[i]));
+    }
+    if (patternShape.type === PatternType.RECORD) {
+        return patternShape.shapes.length === Object.keys(value).length
+            && Object.keys(value).every((k, i) => satisfies(patternShape.shapes[i], value[k]));
+    }
+    return false;
+}
+
 // end core JavaScript pervasives
