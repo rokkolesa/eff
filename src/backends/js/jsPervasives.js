@@ -1,7 +1,7 @@
 // core JavaScript pervasives
 
 class Call {
-    constructor(op, arg, continuation) {
+    constructor(op, arg, continuation = x => x) {
         this.op = op;
         this.arg = arg;
         this.continuation = continuation;
@@ -42,65 +42,94 @@ class Handler {
 }
 
 const bind = function (result, cont) {
-    console.log(".bind | " + result + " >>= (" + cont + ")")
     if (result instanceof Call) {
         return new Call(result.op, result.arg, y => bind(result.continuation(y), cont))
     }
     return cont(result);
 }
 
-const evalWithoutFinally = function (result, handler) {
-    console.log("handle " + result + " with " + handler);
+const evalWithoutFinally = function (handler, result) {
     if (result instanceof Call) {
         let clause = handler.getHandleClause(result);
         if (clause) {
-            return clause.effC(result.arg, y => eval(result.continuation(y), handler));
+            return clause.effC(result.arg, y => eval(handler, result.continuation(y)));
         }
-        return new Call(result.op, result.arg, y => eval(result.continuation(y), handler))
+        return new Call(result.op, result.arg, y => eval(handler, result.continuation(y)))
     }
     return handler.valueClause(result);
 }
 
-const eval = function (result, handler) {
-    return bind(evalWithoutFinally(result, handler), handler.finallyClause);
+const eval = function (handler, result) {
+    return bind(evalWithoutFinally(handler, result), handler.finallyClause);
 }
 
-class PatternShape {
-    constructor(type, value, shapes = []) {
-        this.type = type;
+const top_eval = function (result) {
+    if (result instanceof Call) {
+        if (result.op === 'Print') {
+            console.log(result.arg);
+            return eval(new Handler(), result.continuation());
+        }
+        if (result.op === 'RandomInt') {
+            const rnd = Math.floor(Math.random() * Math.floor(result.arg));
+            return eval(new Handler(), result.continuation(rnd));
+        }
+        if (result.op === 'RandomFloat') {
+            const rnd = Math.random() * result.arg;
+            return eval(new Handler(), result.continuation(rnd));
+        }
+        throw `Uncaught effect ${result.op} ${result.arg}`;
+    }
+    return result;
+
+}
+
+class ArbitraryPattern {
+    satisfies() {
+        return true;
+    }
+}
+
+class ConstantPattern {
+    constructor(value) {
+        this.value = value;
+    }
+
+    satisfies(value) {
+        return this.value === value;
+    }
+}
+
+class VariantPattern {
+    constructor(value, shapes = []) {
         this.value = value;
         this.shapes = shapes;
     }
+
+    satisfies(value) {
+        return this.value === value.name
+            && this.shapes.every(s => s.satisfies(value.arg));
+    }
 }
 
-const PatternType = Object.freeze({
-    ARBITRARY: Symbol("ARBITRARY"),
-    CONSTANT: Symbol("CONSTANT"),
-    TUPLE: Symbol("TUPLE"),
-    RECORD: Symbol("RECORD"),
-    VARIANT: Symbol("VARIANT")
-});
+class TuplePattern {
+    constructor(shapes = []) {
+        this.shapes = shapes;
+    }
 
-const satisfies = function (patternShape, value) {
-    if (patternShape.type === PatternType.ARBITRARY) {
-        return true;
+    satisfies(value) {
+        return this.shapes.length === Object.keys(value).length
+            && this.shapes.every((s, i) => s.satisfies(value[i]));
     }
-    if (patternShape.type === PatternType.CONSTANT) {
-        return patternShape.value === value;
-    }
-    if (patternShape.type === PatternType.VARIANT) {
-        return patternShape.value === value.name
-            && patternShape.shapes.every(s => satisfies(s, value.arg));
-    }
-    if (patternShape.type === PatternType.TUPLE) {
-        return patternShape.shapes.length === Object.keys(value).length
-            && patternShape.shapes.every((s, i) => satisfies(s, value[i]));
-    }
-    if (patternShape.type === PatternType.RECORD) {
-        return patternShape.shapes.length === Object.keys(value).length
-            && Object.keys(value).every((k, i) => satisfies(patternShape.shapes[i], value[k]));
-    }
-    return false;
 }
 
+class RecordPattern {
+    constructor(shapes = {}) {
+        this.shapes = shapes;
+    }
+
+    satisfies(value) {
+        return Object.keys(this.shapes).length === Object.keys(value).length
+            && Object.keys(this.shapes).every(k => this.shapes[k].satisfies(value[k]));
+    }
+}
 // end core JavaScript pervasives

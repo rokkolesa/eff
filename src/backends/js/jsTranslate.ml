@@ -32,7 +32,12 @@ and of_computation {it; at} =
   | CoreSyntax.Let (p_c_lst, c) ->
       let to_bind abs acc = 
         let (v, ts, t) = of_abstraction_generic abs in
-        Bind (t, (v, Sequence(ts @ [Return acc]))) in
+        (
+          match ts with
+            | [] -> Bind (t, (v, acc))
+            | _ -> Bind (t, (v, Sequence(ts @ [Return acc])))
+        )
+        in
       List.fold_right to_bind p_c_lst @@ of_computation c
   | CoreSyntax.LetRec (var_abs_lst, c) ->
       let wrap_with_lambda (var, abs) = Let (var, Lambda (of_abstraction abs)) in
@@ -46,10 +51,9 @@ and of_computation {it; at} =
         Match (_match, List.map of_abstraction_with_shape abs_lst) ::
         []
       ))
-      | CoreSyntax.Apply (e1, e2) -> Apply (of_expression e1, of_expression e2)
+  | CoreSyntax.Apply (e1, e2) -> Apply (of_expression e1, of_expression e2)
   | CoreSyntax.Check c -> Comment "Check is not supported"
-  (* TODO turn these arguments around - should also update jsPervasives.js *)
-  | CoreSyntax.Handle (e, c) -> Handle (of_computation c, of_expression e)
+  | CoreSyntax.Handle (e, c) -> Handle (of_expression e, of_computation c)
 
 and of_abstraction_generic ?(_match = CoreTypes.Variable.fresh "$match") (p, c) = 
   let bindings = bindings p in 
@@ -60,11 +64,6 @@ and of_abstraction_generic ?(_match = CoreTypes.Variable.fresh "$match") (p, c) 
 and of_abstraction ?(_match = CoreTypes.Variable.fresh "$match") abs = 
   let (v, ts, t) = of_abstraction_generic abs ~_match:_match in
   (v, Sequence (ts @ [Return t]))
-
-and of_abstraction_top abs = 
-  let (v, ts, t) = of_abstraction_generic abs in
-  let tophandler = CoreTypes.Variable.fresh "_js_tophandler" in
-  Sequence (Let (v, Handle (t, Var tophandler)) :: ts)
 
 and of_abstraction2 (p1, p2, c) = 
   let bindings1 = bindings p1 in 

@@ -38,13 +38,7 @@ module String : Annotation with type t = string = struct
       match desc.[0] with
       | 'a' .. 'z' | '_' -> Format.fprintf ppf "%s" desc
       | '$' -> Format.fprintf ppf "_var_%d" n
-      | _ -> 
-        let (c_s, c_e) = 
-          match !Config.backend  with
-          | Config.Js _ -> ("/*", "*/")
-          | _  -> ("(*", "*)")
-        in
-        Format.fprintf ppf "_var_%d %s %s %s" n  c_s desc c_e
+      | _ -> Format.fprintf ppf "_var_%d (* %s *)" n desc
     else Format.fprintf ppf "%s" desc
 end
 

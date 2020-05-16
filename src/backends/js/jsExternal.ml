@@ -44,23 +44,9 @@ let conversion_functions =
     ; ("float_of_int", Exists "x => x")
     ; ("int_of_float", Exists "x => ~~x") ]
 
-  
-
-let top_handler = "
-  new Handler([
-      new HandlerClause('Print', (arg, k) => {
-          console.log(arg);
-          return k();
-      }),
-      new HandlerClause('RandomInt', (arg, k) => k(Math.floor(Math.random() * Math.floor(arg)))),
-      new HandlerClause('RandomFloat', (arg, k) => k(Math.random() * arg))
-  ]);
-  ";;
-  
-
 let other =
   Assoc.of_list
-    [("throw", Exists "function(x) { throw x; }"); ("_js_tophandler", Exists top_handler)]
+    [("throw", Exists "function(x) { throw x; }")]
 
 let values =
   comparison_functions 
