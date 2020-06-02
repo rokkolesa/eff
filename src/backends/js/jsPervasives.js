@@ -52,9 +52,9 @@ const evalWithoutFinally = function (handler, result) {
     if (result instanceof Call) {
         let clause = handler.getHandleClause(result);
         if (clause) {
-            return clause.effC(result.arg, y => eval(handler, result.continuation(y)));
+            return clause.effC(result.arg, y => evalWithoutFinally(handler, result.continuation(y)));
         }
-        return new Call(result.op, result.arg, y => eval(handler, result.continuation(y)))
+        return new Call(result.op, result.arg, y => evalWithoutFinally(handler, result.continuation(y)))
     }
     return handler.valueClause(result);
 }
@@ -67,15 +67,19 @@ const top_eval = function (result) {
     if (result instanceof Call) {
         if (result.op === 'Print') {
             console.log(result.arg);
-            return eval(new Handler(), result.continuation());
+            return top_eval(result.continuation());
         }
         if (result.op === 'RandomInt') {
             const rnd = Math.floor(Math.random() * Math.floor(result.arg));
-            return eval(new Handler(), result.continuation(rnd));
+            return top_eval(result.continuation(rnd));
         }
         if (result.op === 'RandomFloat') {
             const rnd = Math.random() * result.arg;
-            return eval(new Handler(), result.continuation(rnd));
+            return top_eval(result.continuation(rnd));
+        }
+        if (result.op === 'Read') {
+            const value = prompt("Enter value");
+            return top_eval(result.continuation(value));
         }
         throw `Uncaught effect ${result.op} ${result.arg}`;
     }
@@ -128,8 +132,7 @@ class RecordPattern {
     }
 
     satisfies(value) {
-        return Object.keys(this.shapes).length === Object.keys(value).length
-            && Object.keys(this.shapes).every(k => this.shapes[k].satisfies(value[k]));
+        return Object.keys(this.shapes).every(k => this.shapes[k].satisfies(value[k]));
     }
 }
 // end core JavaScript pervasives
