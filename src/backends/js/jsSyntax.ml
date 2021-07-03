@@ -66,8 +66,8 @@ and abstraction2 = variable * variable * js_term
 
 type cmd =
   | Term of js_term
-  | TopLet of (variable * js_term list * js_term) list
-  | TopLetRec of js_term list
+  | TopLet of (variable * js_term * js_term) list
+  | TopLetRec of js_term
   | External of (variable * string)
 
 let print = Format.fprintf
@@ -190,7 +190,7 @@ let rec print_term term ppf = match term with
 let rec print_cmd cmd ppf = match cmd with
   | Term t -> print ppf "@[<v 4>console.dir(@,@[<v 4>top_eval(@,@[<v 4>%t@]@;<0 -4>),@]@,{ depth: null }@]@;<0 -4>);@." @@ print_term t
   | TopLet ts -> print ppf "%t@." (Print.sequence ";" print_top_let ts)
-  | TopLetRec ts -> print ppf "@[<v 4>%t@]@." @@ print_term (Sequence ts)
+  | TopLetRec t -> print ppf "@[<v 4>%t@]@." @@ print_term t
   | External (x, f) -> (
     match Assoc.lookup f JsExternal.values with
     | None -> Error.runtime "Unknown external symbol %s." f
@@ -210,8 +210,8 @@ let rec print_cmd cmd ppf = match cmd with
   | JsExternal.Exists t ->
       print ppf "const %t = %s;@." (print_variable name) t
     
-  and print_top_let (v, ts, t) ppf = 
+  and print_top_let (v, t, p) ppf = 
     print ppf "@[<v 4>const %t = top_eval(@,@[<v 4>%t@]@;<0 -4>);@;<0 -4>@[<v 4>%t@];@]@."
       (print_variable v)
       (print_term t)
-      (print_term (Sequence ts))
+      (print_term p)
