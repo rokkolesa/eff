@@ -8,83 +8,101 @@ class Call {
     }
 
     toString() {
-        return "Call(op:'" + this.op + "', arg:'" + this.arg + "')" + this.continuation;
+        return `Call(op:'${this.op}', arg:'${JSON.stringify(this.arg)}')`;
     }
 }
 
 class HandlerClause {
-    constructor(op, effC) {
+    constructor(op, handler) {
         this.op = op;
-        this.effC = effC;
+        this.handler = handler;
     }
 
     toString() {
-        return "HandlerClause(op:'" + this.op + "')";
+        return `HandlerClause(op:'${this.op}')`;
     }
 }
 
 class Handler {
-    constructor(effCs = [], valueClause = x => x, finallyClause = x => x) {
-        this.effCs = effCs;
+    constructor(
+        effectClauses = [],
+        valueClause = x => x,
+        finallyClause = x => x
+    ) {
+        this.effectClauses = effectClauses;
         this.finallyClause = finallyClause;
         this.valueClause = valueClause;
     }
 
-    getHandleClause(result) {
+    getEffectClause(result) {
         if (result instanceof Call) {
-            return this.effCs.find(effC => effC.op === result.op);
+            return this.effectClauses
+                .find(effectClause => effectClause.op === result.op);
         }
     }
 
     toString() {
-        return "Handler(effCs: '" + this.effCs.map(c => c.op).join(",") + "')";
+        return `Handler(effectClauses: '${JSON.stringify(this.effectClauses.map(effectClause => effectClause.effect))}')`;
     }
 }
 
-const bind = function (result, cont) {
-    if (result instanceof Call) {
-        return new Call(result.op, result.arg, y => bind(result.continuation(y), cont))
+const bind = function (result, continuation) {
+    if (!(result instanceof Call)) {
+        return continuation(result);
     }
-    return cont(result);
+    return new Call(
+        result.op,
+        result.arg,
+        y => bind(result.continuation(y), continuation)
+    )
 }
 
 const evalWithoutFinally = function (handler, result) {
-    if (result instanceof Call) {
-        let clause = handler.getHandleClause(result);
-        if (clause) {
-            return clause.effC(result.arg, y => evalWithoutFinally(handler, result.continuation(y)));
-        }
-        return new Call(result.op, result.arg, y => evalWithoutFinally(handler, result.continuation(y)))
+    if (!(result instanceof Call)) {
+        return handler.valueClause(result);
     }
-    return handler.valueClause(result);
+    let effectClause = handler.getEffectClause(result);
+    if (effectClause) {
+        return effectClause.handler(
+            result.arg,
+            y => evalWithoutFinally(handler, result.continuation(y))
+        );
+    }
+    return new Call(
+        result.op,
+        result.arg,
+        y => evalWithoutFinally(handler, result.continuation(y))
+    );
 }
 
 const eval = function (handler, result) {
-    return bind(evalWithoutFinally(handler, result), handler.finallyClause);
+    return bind(
+        evalWithoutFinally(handler, result),
+        handler.finallyClause
+    );
 }
 
 const top_eval = function (result) {
-    if (result instanceof Call) {
-        if (result.op === 'Print') {
-            console.log(result.arg);
-            return top_eval(result.continuation());
-        }
-        if (result.op === 'RandomInt') {
-            const rnd = Math.floor(Math.random() * Math.floor(result.arg));
-            return top_eval(result.continuation(rnd));
-        }
-        if (result.op === 'RandomFloat') {
-            const rnd = Math.random() * result.arg;
-            return top_eval(result.continuation(rnd));
-        }
-        if (result.op === 'Read') {
-            const value = prompt("Enter value");
-            return top_eval(result.continuation(value));
-        }
-        throw `Uncaught effect ${result.op} ${result.arg}`;
+    if (!(result instanceof Call)) {
+        return result;
     }
-    return result;
-
+    if (result.op === 'Print') {
+        console.log(result.arg);
+        return top_eval(result.continuation());
+    }
+    if (result.op === 'RandomInt') {
+        const rnd = Math.floor(Math.random() * Math.floor(result.arg));
+        return top_eval(result.continuation(rnd));
+    }
+    if (result.op === 'RandomFloat') {
+        const rnd = Math.random() * result.arg;
+        return top_eval(result.continuation(rnd));
+    }
+    if (result.op === 'Read') {
+        const value = prompt("Enter value");
+        return top_eval(result.continuation(value));
+    }
+    throw `Uncaught effect ${result.op} ${JSON.stringify(result.arg)}`;
 }
 
 class ArbitraryPattern {
@@ -111,7 +129,7 @@ class VariantPattern {
 
     satisfies(value) {
         return this.value === value.name
-            && this.shapes.every(s => s.satisfies(value.arg));
+            && this.shapes.every(shape => shape.satisfies(value.arg));
     }
 }
 

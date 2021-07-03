@@ -40,7 +40,7 @@ type js_term =
   | Let of variable * js_term
   | Bind of js_term * abstraction
   (* MATCH is acually expresssion * (pattern * term) list.. but this differentiation is already done in core.. no need for that here *)
-  | Match of variable * (pattern_shape * abstraction) list
+  | Match of (pattern_shape * abstraction) list
   (* RETURN is a construct known only in JS - it is implicit in Eff.. perhaps it originates in 'Value' *)
   | Return of js_term
   (* APPLY is function application.. it is very similar in JS to the one in Eff *)

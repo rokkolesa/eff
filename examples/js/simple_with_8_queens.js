@@ -1,70 +1,160 @@
+// core JavaScript pervasives
+
 class Call {
-    constructor(op, arg, continuation) {
+    constructor(op, arg, continuation = x => x) {
         this.op = op;
         this.arg = arg;
         this.continuation = continuation;
     }
 
     toString() {
-        return "Call(op:'" + this.op + "', arg:'" + this.arg + "')" + this.continuation;
+        return `Call(op:'${this.op}', arg:'${JSON.stringify(this.arg)}')`;
     }
 }
 
 class HandlerClause {
-    constructor(op, effC) {
+    constructor(op, handler) {
         this.op = op;
-        this.effC = effC;
+        this.handler = handler;
     }
 
     toString() {
-        return "HandlerClause(op:'" + this.op + "')";
+        return `HandlerClause(op:'${this.op}')`;
     }
 }
 
 class Handler {
-    constructor(effCs = [], valueClause = x => x, finallyClause = x => x) {
-        this.effCs = effCs;
+    constructor(
+        effectClauses = [],
+        valueClause = x => x,
+        finallyClause = x => x
+    ) {
+        this.effectClauses = effectClauses;
         this.finallyClause = finallyClause;
         this.valueClause = valueClause;
     }
 
-    getHandleClause(result) {
+    getEffectClause(result) {
         if (result instanceof Call) {
-            return this.effCs.find(effC => effC.op === result.op);
+            return this.effectClauses
+                .find(effectClause => effectClause.op === result.op);
         }
     }
 
     toString() {
-        return "Handler(effCs: '" + this.effCs.map(c => c.op).join(",") + "')";
+        return `Handler(effectClauses: '${JSON.stringify(this.effectClauses.map(effectClause => effectClause.effect))}')`;
     }
 }
 
-const bind = function (result, cont) {
-    console.log(".bind | " + result + " >>= (" + cont + ")")
-    if (result instanceof Call) {
-        return new Call(result.op, result.arg, y => bind(result.continuation(y), cont))
+const bind = function (result, continuation) {
+    if (!(result instanceof Call)) {
+        return continuation(result);
     }
-    return cont(result);
+    return new Call(
+        result.op,
+        result.arg,
+        y => bind(result.continuation(y), continuation)
+    )
 }
 
-const evalWithoutFinally = function (result, handler) {
-    console.log("handle " + result + " with " + handler);
-    if (result instanceof Call) {
-        let clause = handler.getHandleClause(result);
-        if (clause) {
-            return clause.effC(result.arg, y => eval(result.continuation(y), handler));
-        }
-        return new Call(result.op, result.arg, y => eval(result.continuation(y), handler))
+const evalWithoutFinally = function (handler, result) {
+    if (!(result instanceof Call)) {
+        return handler.valueClause(result);
     }
-    return handler.valueClause(result);
+    let effectClause = handler.getEffectClause(result);
+    if (effectClause) {
+        return effectClause.handler(
+            result.arg,
+            y => evalWithoutFinally(handler, result.continuation(y))
+        );
+    }
+    return new Call(
+        result.op,
+        result.arg,
+        y => evalWithoutFinally(handler, result.continuation(y))
+    );
 }
 
-const eval = function (result, handler) {
-    return bind(evalWithoutFinally(result, handler), handler.finallyClause);
+const eval = function (handler, result) {
+    return bind(
+        evalWithoutFinally(handler, result),
+        handler.finallyClause
+    );
 }
 
+const top_eval = function (result) {
+    if (!(result instanceof Call)) {
+        return result;
+    }
+    if (result.op === 'Print') {
+        console.log(result.arg);
+        return top_eval(result.continuation());
+    }
+    if (result.op === 'RandomInt') {
+        const rnd = Math.floor(Math.random() * Math.floor(result.arg));
+        return top_eval(result.continuation(rnd));
+    }
+    if (result.op === 'RandomFloat') {
+        const rnd = Math.random() * result.arg;
+        return top_eval(result.continuation(rnd));
+    }
+    if (result.op === 'Read') {
+        const value = prompt("Enter value");
+        return top_eval(result.continuation(value));
+    }
+    throw `Uncaught effect ${result.op} ${JSON.stringify(result.arg)}`;
+}
 
-// pervasives
+class ArbitraryPattern {
+    satisfies() {
+        return true;
+    }
+}
+
+class ConstantPattern {
+    constructor(value) {
+        this.value = value;
+    }
+
+    satisfies(value) {
+        return this.value === value;
+    }
+}
+
+class VariantPattern {
+    constructor(value, shapes = []) {
+        this.value = value;
+        this.shapes = shapes;
+    }
+
+    satisfies(value) {
+        return this.value === value.name
+            && this.shapes.every(shape => shape.satisfies(value.arg));
+    }
+}
+
+class TuplePattern {
+    constructor(shapes = []) {
+        this.shapes = shapes;
+    }
+
+    satisfies(value) {
+        return this.shapes.length === Object.keys(value).length
+            && this.shapes.every((s, i) => s.satisfies(value[i]));
+    }
+}
+
+class RecordPattern {
+    constructor(shapes = {}) {
+        this.shapes = shapes;
+    }
+
+    satisfies(value) {
+        return Object.keys(this.shapes).every(k => this.shapes[k].satisfies(value[k]));
+    }
+}
+// end core JavaScript pervasives
+
 
 class Maybe{}
 class None extends Maybe{
@@ -102,35 +192,68 @@ let forall = function(predicate, list)
     return false;
 }
 
+// generating a seuqence
+const computeEffect = "Compute";
+
+let computeHandler = new Handler([
+    new HandlerClause(computeEffect, (args, k) => {
+        const msg = args[0];
+        const x   = args[1];
+        console.log(msg);
+        return bind(
+            k(x),
+            y   => k(x * y)
+        )
+    })
+]);
+
+// boolean -> Result
+let generate = function (x)
+{
+    if(x < 0)
+    {
+        return 42;
+    }
+    else
+    {
+        return new Call(computeEffect, ["Computing...", x], (y => {
+            console.log(`Step: ${y}`);
+            return y + 1;
+        }));
+    }
+}
+console.log(`Result: '${JSON.stringify([...Array(11).keys()].map(i => top_eval(eval(computeHandler, generate(i)))))}'`);
+// console.log("Result: '" + top_eval(eval(new Handler(), generate (-1))) + "'");
 
 // simple test function, returns Value(9)
 
-const printEffect = "Print";
+const errorEffect = "Error";
 
-let testHandler = new Handler([
-    new HandlerClause(printEffect, (args, k) => {
-        console.log(args);
-        return bind(k(1), x => bind(k(2+x), y => k(3+y)))
+let errorHandler = new Handler([
+    new HandlerClause(errorEffect, (args, k) => {
+        const msg = args[0];
+        const x   = args[1];
+        console.log(msg);
+        return k (-x);
     })
 ]);
 
 // boolean -> Result
 let test = function (x)
 {
-    if(x > 0)
+    let condition = x > 0;
+    if(new ConstantPattern(false).satisfies(condition))
+    {
+        return new Call(errorEffect, ["Boom!", x]);
+    }
+    if(new ArbitraryPattern().satisfies(condition))
     {
         return 42;
     }
-    else
-    {
-        return new Call(printEffect, "Boom!", (y => {
-            console.log(y);
-            return y+1;
-        }));
-    }
 }
-// console.log("Result: '" + eval(test (-1), testHandler) + "'");
-// console.log("Result: '" + eval(test (-1), new Handler()) + "'");
+// console.log(`Result: '${top_eval(eval(errorHandler, test (-3)))}'`);
+// console.log(`Result: '${top_eval(eval(errorHandler, test (-4)))}'`);
+// console.log("Result: '" + top_eval(eval(new Handler(), test (-1))) + "'");
 
 // 8 queen problem
 /**
@@ -176,7 +299,6 @@ let amb = new Handler([
     {
         return bind(k(true), choiceResult => 
         {
-            console.log("amb.bind | " + choiceResult);
             if(choiceResult instanceof Success)
             {
                 return choiceResult;
@@ -191,23 +313,12 @@ let amb = new Handler([
 
 let selectFrom = function(possibleCoordinates)
 {
-    console.log(".selectFrom");
-    console.log(possibleCoordinates);
     if(possibleCoordinates === null || possibleCoordinates.length === 0)
     {
         return new None();
     }
     const [x, ...xs] = possibleCoordinates;
-    return new Call(selectEffect, null, y =>
-        {
-            if(y === true)
-            {
-                console.log("Continuing with true");
-                return new Some(x);
-            }
-            console.log("Continuing with false");
-            return selectFrom(xs);
-        });
+    return new Call(selectEffect, null, y => y === true ? new Some(x) : selectFrom(xs));
 }
 
 let noAttack = function(p0, p1)
@@ -231,21 +342,17 @@ let findQueens = function(x, queens)
 
     return bind(selectFrom(available(x,queens)), selection =>
     {
-        console.log("findQueens.bind | " + x);
-        console.log("findQueens.bind | " + selection);
         if(selection instanceof None)
         {
             return new Failure();
         }
         let newQueens = [[x, selection.value]].concat(queens);
-        console.log("findQueens.bind | ");
-        console.log(newQueens);
         return findQueens(x + 1, newQueens);
     })
 }
 
-// console.log("Result: " + eval(findQueens(1, []), new Handler()));
-console.log("Result: " + eval(findQueens(1, []), amb));
+// console.log("Result: " + top_eval(eval(new Handler(), findQueens(1, []))));
+// console.log("Result: " + top_eval(eval(amb, findQueens(1, []))));
 
 
 // another take on the 8 queens problem: BFS

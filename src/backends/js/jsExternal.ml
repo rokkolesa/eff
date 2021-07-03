@@ -46,7 +46,7 @@ let conversion_functions =
 
 let other =
   Assoc.of_list
-    [("throw", Exists "function(x) { throw x; }")]
+    [("throw", Exists "function (x) { throw x; }")]
 
 let values =
   comparison_functions 
